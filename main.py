@@ -4,6 +4,13 @@ from datetime import datetime, timedelta
 from slack_sdk import WebClient
 from gss import import_to_gss
 
+
+def convert_unixtime_to_datetime(unixtime: str):
+    dt_object = datetime.fromtimestamp(float(unixtime))
+    formatted_date = dt_object.strftime("%Y-%m-%d %H:%M:%S")
+    return formatted_date
+
+
 load_dotenv()
 
 mapping = {
@@ -19,13 +26,13 @@ client = WebClient(token=slack_token)
 channel_id = os.getenv("SLACK_CHANNEL_ID")
 
 # 90日前のtimestampを取得
-timestamp_89_days_ago = (datetime.now() - timedelta(days=65)).timestamp()
+timestamp_today = (datetime.now()).timestamp()
 timestamp_90_days_ago = (datetime.now() - timedelta(days=90)).timestamp()
 
 parent_response = client.conversations_history(
     channel=channel_id,
     oldest=timestamp_90_days_ago,
-    latest=timestamp_89_days_ago,
+    latest=timestamp_today,
     inclusive=True,
 )
 
@@ -41,7 +48,13 @@ for msg in parent_response["messages"]:
         if "client_msg_id" not in cr:
             continue
         values.append(
-            [cr["ts"], cr["user"], mapping[cr["user"]], cr["text"], cr["client_msg_id"]]
+            [
+                convert_unixtime_to_datetime(cr["ts"]),
+                cr["user"],
+                mapping[cr["user"]],
+                cr["text"],
+                cr["client_msg_id"],
+            ]
         )
 
 res = import_to_gss(values)
